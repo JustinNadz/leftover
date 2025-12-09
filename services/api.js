@@ -1,5 +1,32 @@
-// API Configuration
-const API_BASE_URL = 'http://localhost:3000';
+// API Configuration with Dynamic URL
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+// Dynamically determine the API URL
+// For physical devices, use your computer's local IP
+// For emulators/simulators or web, use localhost
+const getApiBaseUrl = () => {
+    // If running in Expo, try to get the debugger host (your computer's IP)
+    const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+
+    if (debuggerHost) {
+        // Extract IP from host (format is "192.168.x.x:port")
+        const ip = debuggerHost.split(':')[0];
+        return `http://${ip}:3000`;
+    }
+
+    // Fallback for different platforms
+    if (Platform.OS === 'android') {
+        // Android emulator uses 10.0.2.2 to reach host machine
+        return 'http://10.0.2.2:3000';
+    }
+
+    // iOS simulator and web can use localhost
+    return 'http://localhost:3000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('📡 API Base URL:', API_BASE_URL);
 
 let authToken = null;
 

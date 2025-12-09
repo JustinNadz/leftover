@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/prisma:/app/prisma
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=change-this-in-production
+    restart: unless-stopped
+
+  # Optional: Add PostgreSQL for production
+  # db:
+  #   image: postgres:15
+  #   environment:
+  #     - POSTGRES_USER=leftuber
+  #     - POSTGRES_PASSWORD=change-this
+  #     - POSTGRES_DB=leftuber
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+
+# volumes:
+#   postgres_data:
