@@ -147,12 +147,12 @@ export default function App() {
     }
   }, [category, screen]);
 
-  // Fetch orders when on Orders tab
+  // Fetch orders when on Orders tab (only if logged in)
   useEffect(() => {
-    if (screen === 'main' && activeTab === 'Orders') {
+    if (screen === 'main' && activeTab === 'Orders' && user && user.phone !== 'guest') {
       fetchOrders();
     }
-  }, [activeTab, screen]);
+  }, [activeTab, screen, user]);
 
   // ---------- API CALLS ----------
   const fetchProducts = async () => {

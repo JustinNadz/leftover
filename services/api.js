@@ -12,17 +12,17 @@ const getApiBaseUrl = () => {
     if (debuggerHost) {
         // Extract IP from host (format is "192.168.x.x:port")
         const ip = debuggerHost.split(':')[0];
-        return `http://${ip}:3000`;
+        return `http://${ip}:5000`;
     }
 
     // Fallback for different platforms
     if (Platform.OS === 'android') {
         // Android emulator uses 10.0.2.2 to reach host machine
-        return 'http://10.0.2.2:3000';
+        return 'http://10.0.2.2:5000';
     }
 
     // iOS simulator and web can use localhost
-    return 'http://localhost:3000';
+    return 'http://localhost:5000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
