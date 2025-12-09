@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  name      String?
+  role      String   @default("BUYER") // BUYER or MERCHANT
+  pushToken String?
+  createdAt DateTime @default(now())
+
+  products Product[]
+  buyerOrders    Order[] @relation("BuyerOrders")
+  merchantOrders Order[] @relation("MerchantOrders")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  merchantId    String
+  merchant      User     @relation(fields: [merchantId], references: [id])
+  title         String
+  description   String?
+  image         String?
+  category      String   @default("Fast Food")
+  originalPrice Float?
+  offerPrice    Float
+  quantity      Int      @default(1)
+  pickupTime    String?
+  views         Int      @default(0)
+  salesCount    Int      @default(0)
+  hot           Boolean  @default(false)
+  bestSeller    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  orders Order[]
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  buyerId       String
+  buyer         User     @relation("BuyerOrders", fields: [buyerId], references: [id])
+  merchantId    String
+  merchant      User     @relation("MerchantOrders", fields: [merchantId], references: [id])
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  status        String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  deliveryType  String   @default("PICKUP")
+  addressText   String?
+  latitude      Float?
+  longitude     Float?
+  scheduledDate String?
+  scheduledTime String?
+  note          String?
+  deliveryFee   Float    @default(30)
+  subtotal      Float
+  total         Float
+  createdAt     DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
