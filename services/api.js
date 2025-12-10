@@ -86,6 +86,13 @@ export const authApi = {
             body: JSON.stringify({ phone, otp }),
         }),
 
+    // New: Verify Firebase ID token
+    verifyFirebaseToken: (idToken) =>
+        apiRequest('/auth/verify-firebase', {
+            method: 'POST',
+            body: JSON.stringify({ idToken }),
+        }),
+
     updateRole: (role, name) =>
         apiRequest('/auth/update-role', {
             method: 'POST',

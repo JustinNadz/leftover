@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "579209398556",
+        "project_id": "leftover-dde19",
+        "storage_bucket": "leftover-dde19.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:579209398556:android:0c12c7df3efa3f4e8b92d9",
+                "android_client_info": {
+                    "package_name": "com.leftuber.app"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyBt4zdZ_mJbuaL0eZHzh2O3Y_Q7MdkCSbI"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

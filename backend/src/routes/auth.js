@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const { JWT_SECRET } = require('../middleware/auth');
+const { verifyIdToken } = require('../config/firebase-admin');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -163,6 +164,79 @@ router.post('/update-role', async (req, res) => {
     } catch (error) {
         console.error('Update role error:', error);
         res.status(500).json({ error: 'Failed to update role' });
+    }
+});
+
+// POST /auth/verify-firebase - Verify Firebase ID token and create/login user
+router.post('/verify-firebase', async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({ error: 'ID token required' });
+        }
+
+        // Verify the Firebase ID token
+        const decodedToken = await verifyIdToken(idToken);
+        const phoneNumber = decodedToken.phone_number;
+
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'Phone number not found in token' });
+        }
+
+        // Normalize phone number (remove +63 prefix if present, store with it)
+        let normalizedPhone = phoneNumber;
+
+        // Check if user exists
+        let user = await prisma.user.findUnique({
+            where: { phone: normalizedPhone },
+        });
+
+        const isNewUser = !user;
+
+        if (!user) {
+            // Create new user with default role
+            user = await prisma.user.create({
+                data: {
+                    phone: normalizedPhone,
+                    name: `User${phoneNumber.slice(-4)}`,
+                    role: 'BUYER',
+                },
+            });
+            console.log(`📱 New user created: ${normalizedPhone}`);
+        } else {
+            console.log(`📱 Existing user logged in: ${normalizedPhone}`);
+        }
+
+        // Generate JWT for app authentication
+        const token = jwt.sign(
+            { userId: user.id, phone: user.phone, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                phone: user.phone,
+                name: user.name,
+                role: user.role,
+            },
+            isNewUser,
+        });
+    } catch (error) {
+        console.error('Firebase verify error:', error);
+
+        if (error.code === 'auth/id-token-expired') {
+            return res.status(401).json({ error: 'Token expired' });
+        }
+        if (error.code === 'auth/argument-error') {
+            return res.status(400).json({ error: 'Invalid token format' });
+        }
+
+        res.status(500).json({ error: 'Failed to verify Firebase token' });
     }
 });
 

@@ -29,6 +29,7 @@ import {
   setAuthToken,
   clearAuthToken,
 } from './services/api';
+import { firebaseAuth } from './services/firebase';
 
 const PURPLE = '#5b2b8c';
 const ORANGE = '#ff9500';
@@ -73,6 +74,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [firebaseConfirmation, setFirebaseConfirmation] = useState(null);
 
   // --- App state ---
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -190,7 +192,7 @@ export default function App() {
     setRefreshing(false);
   };
 
-  // ---------- AUTH / OTP ----------
+  // ---------- AUTH / OTP (Firebase) ----------
   const sendOtp = async () => {
     if (!phone || phone.trim().length < 7) {
       Alert.alert('Enter a valid phone number');
@@ -199,28 +201,49 @@ export default function App() {
 
     setLoading(true);
     try {
-      const response = await authApi.sendOtp(phone.trim());
-      if (response.success) {
-        setOtpFromServer(response.otp); // For testing only
-        setScreen('otp');
-        Alert.alert('OTP Sent', `Your OTP is: ${response.otp}`);
-      }
+      // Use Firebase Phone Auth to send real SMS
+      const confirmation = await firebaseAuth.sendOTP(phone.trim());
+      setFirebaseConfirmation(confirmation);
+      setScreen('otp');
+      Alert.alert('OTP Sent', 'A verification code has been sent to your phone via SMS.');
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to send OTP');
+      console.error('Send OTP error:', error);
+      let errorMessage = 'Failed to send OTP';
+      if (error.code === 'auth/invalid-phone-number') {
+        errorMessage = 'Invalid phone number format';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many attempts. Please try again later.';
+      }
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const verifyOtp = async () => {
-    if (!otpInput || otpInput.length !== 4) {
-      Alert.alert('Enter a valid 4-digit OTP');
+    // Firebase OTP is 6 digits
+    if (!otpInput || otpInput.length !== 6) {
+      Alert.alert('Enter the 6-digit verification code');
+      return;
+    }
+
+    if (!firebaseConfirmation) {
+      Alert.alert('Error', 'Please request a new OTP');
+      setScreen('login');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await authApi.verifyOtp(phone.trim(), otpInput);
+      // Verify OTP with Firebase
+      const userCredential = await firebaseAuth.verifyOTP(firebaseConfirmation, otpInput);
+
+      // Get Firebase ID token
+      const idToken = await userCredential.user.getIdToken();
+
+      // Send token to backend for user creation/login
+      const response = await authApi.verifyFirebaseToken(idToken);
+
       if (response.success) {
         setAuthToken(response.token);
         setUser(response.user);
@@ -235,7 +258,14 @@ export default function App() {
         }
       }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Invalid OTP');
+      console.error('Verify OTP error:', error);
+      let errorMessage = 'Invalid verification code';
+      if (error.code === 'auth/invalid-verification-code') {
+        errorMessage = 'The verification code is incorrect';
+      } else if (error.code === 'auth/code-expired') {
+        errorMessage = 'The verification code has expired. Please request a new one.';
+      }
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -264,13 +294,15 @@ export default function App() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Sign out from Firebase
+    await firebaseAuth.signOut();
     clearAuthToken();
     setUser(null);
     setScreen('login');
     setPhone('');
     setOtpInput('');
-    setOtpFromServer('');
+    setFirebaseConfirmation(null);
     setProducts([]);
     setOrders([]);
   };
@@ -512,18 +544,18 @@ export default function App() {
       <SafeAreaView style={styles.otpSafe}>
         <Image source={LOGIN_BANNER} style={styles.loginBannerSmall} />
         <Text style={{ color: PURPLE, textAlign: 'center', marginBottom: 8 }}>
-          Enter the 4-digit OTP
+          Enter the 6-digit verification code
         </Text>
 
         <View style={{ paddingHorizontal: 24 }}>
-          <Text style={{ marginBottom: 6, color: '#444' }}>OTP sent to {phone}</Text>
+          <Text style={{ marginBottom: 6, color: '#444' }}>Code sent to {phone}</Text>
           <TextInput
-            placeholder="1234"
+            placeholder="123456"
             keyboardType="number-pad"
             value={otpInput}
             onChangeText={setOtpInput}
             style={styles.input}
-            maxLength={4}
+            maxLength={6}
           />
           <TouchableOpacity
             onPress={verifyOtp}
@@ -537,7 +569,7 @@ export default function App() {
           </TouchableOpacity>
 
           <TouchableOpacity style={{ marginTop: 12 }} onPress={sendOtp}>
-            <Text style={{ color: PURPLE, textAlign: 'center' }}>Resend OTP</Text>
+            <Text style={{ color: PURPLE, textAlign: 'center' }}>Resend Code</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
